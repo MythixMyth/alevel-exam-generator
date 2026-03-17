@@ -1,50 +1,48 @@
 import { useState, useCallback, useEffect } from "react";
 
-// ─── Constants ───────────────────────────────────────────────────────────────
 const TOPICS_MAP = {
   "Pure Mathematics": [
-    { id: "Algebra & Functions", icon: "ƒ" },
-    { id: "Coordinate Geometry", icon: "◎" },
-    { id: "Sequences & Series", icon: "Σ" },
-    { id: "Trigonometry", icon: "θ" },
-    { id: "Exponentials & Logarithms", icon: "eˣ" },
-    { id: "Differentiation", icon: "∂" },
-    { id: "Integration", icon: "∫" },
-    { id: "Vectors", icon: "→" },
-    { id: "Numerical Methods", icon: "≈" },
-    { id: "Proof", icon: "∴" },
+    "Algebra & Functions",
+    "Coordinate Geometry",
+    "Sequences & Series",
+    "Trigonometry",
+    "Exponentials & Logarithms",
+    "Differentiation",
+    "Integration",
+    "Vectors",
+    "Numerical Methods",
+    "Proof",
   ],
   Statistics: [
-    { id: "Data Presentation & Interpretation", icon: "📊" },
-    { id: "Probability", icon: "⅟" },
-    { id: "Statistical Distributions", icon: "φ" },
-    { id: "Hypothesis Testing", icon: "H₀" },
+    "Data Presentation & Interpretation",
+    "Probability",
+    "Statistical Distributions",
+    "Hypothesis Testing",
   ],
   Mechanics: [
-    { id: "Kinematics", icon: "⟿" },
-    { id: "Forces & Newton's Laws", icon: "N" },
-    { id: "Moments", icon: "⤾" },
+    "Kinematics",
+    "Forces & Newton's Laws",
+    "Moments",
   ],
 };
 
 const DIFFS = [
-  { id: "easy", label: "AS Level", marks: "2–4", color: "#3d8b37", bg: "#edf7ec" },
-  { id: "medium", label: "A2 Standard", marks: "4–6", color: "#c6922a", bg: "#fdf5e6" },
-  { id: "hard", label: "A2 Challenge", marks: "6–10", color: "#c44b3f", bg: "#fdf0ee" },
+  { id: "easy", label: "AS Level", marks: "2-4" },
+  { id: "medium", label: "A2 Standard", marks: "4-6" },
+  { id: "hard", label: "A2 Challenge", marks: "6-10" },
 ];
 
 const COUNTS = [5, 8, 10, 12, 15];
 
-// ─── Helpers ─────────────────────────────────────────────────────────────────
-const gradeFor = (pct) => {
-  if (pct >= 90) return { g: "A*", c: "#3d8b37" };
-  if (pct >= 80) return { g: "A", c: "#3d8b37" };
-  if (pct >= 70) return { g: "B", c: "#457b9d" };
-  if (pct >= 60) return { g: "C", c: "#c6922a" };
-  if (pct >= 50) return { g: "D", c: "#e07a3a" };
-  if (pct >= 40) return { g: "E", c: "#c44b3f" };
-  return { g: "U", c: "#c44b3f" };
-};
+function gradeFor(pct) {
+  if (pct >= 90) return { grade: "A*", color: "#2e7d32" };
+  if (pct >= 80) return { grade: "A", color: "#2e7d32" };
+  if (pct >= 70) return { grade: "B", color: "#1565c0" };
+  if (pct >= 60) return { grade: "C", color: "#ed6c02" };
+  if (pct >= 50) return { grade: "D", color: "#e65100" };
+  if (pct >= 40) return { grade: "E", color: "#d32f2f" };
+  return { grade: "U", color: "#d32f2f" };
+}
 
 function shuffle(arr) {
   const a = [...arr];
@@ -55,7 +53,6 @@ function shuffle(arr) {
   return a;
 }
 
-// ─── Build prompt for AI generation ──────────────────────────────────────────
 function buildPrompt(topics, difficulties, count) {
   const diffDescs = difficulties.map((d) => {
     if (d === "easy") return "AS-level (2-4 marks each, straightforward single-concept)";
@@ -88,15 +85,12 @@ RULES:
 Respond with ONLY a valid JSON array. No markdown fences, no explanation.`;
 }
 
-// ─── Pick questions from the bank ────────────────────────────────────────────
 function pickFromBank(bank, topics, difficulties, count) {
   const matching = bank.filter(
     (q) => topics.includes(q.topic) && difficulties.includes(q.difficulty)
   );
-
   if (matching.length === 0) return null;
 
-  // Spread across topics evenly
   const shuffled = shuffle(matching);
   const byTopic = {};
   for (const q of shuffled) {
@@ -123,33 +117,52 @@ function pickFromBank(bank, topics, difficulties, count) {
   return selected;
 }
 
-// ─── Components ──────────────────────────────────────────────────────────────
+const diffColors = {
+  easy: { text: "#2e7d32", bg: "#e8f5e9" },
+  medium: { text: "#ed6c02", bg: "#fff4e5" },
+  hard: { text: "#d32f2f", bg: "#fdecea" },
+};
 
-function TopicChip({ topic, selected, onToggle }) {
+function TopicChip({ name, selected, onToggle }) {
   return (
-    <button onClick={onToggle} style={{
-      display: "inline-flex", alignItems: "center", gap: 8,
-      padding: "10px 18px", borderRadius: 8,
-      border: selected ? "2px solid var(--teal)" : "2px solid var(--rule)",
-      background: selected ? "var(--tealBg)" : "var(--card)",
-      color: selected ? "var(--teal)" : "var(--ink)",
-      cursor: "pointer", fontFamily: "'Literata', serif", fontSize: 14,
-      fontWeight: selected ? 600 : 400, transition: "all 0.2s", whiteSpace: "nowrap",
-    }}>
-      <span style={{ fontSize: 16, opacity: 0.7 }}>{topic.icon}</span>
-      {topic.id}
+    <button
+      onClick={onToggle}
+      style={{
+        display: "inline-block",
+        padding: "8px 16px",
+        borderRadius: 6,
+        border: selected ? "2px solid var(--primary)" : "1px solid var(--border)",
+        background: selected ? "var(--primary-light)" : "#fff",
+        color: selected ? "var(--primary)" : "var(--text)",
+        cursor: "pointer",
+        fontSize: 14,
+        fontWeight: selected ? 600 : 400,
+        fontFamily: "inherit",
+        transition: "all 0.15s",
+      }}
+    >
+      {name}
     </button>
   );
 }
 
 function Spinner({ message }) {
   const [dots, setDots] = useState(0);
-  useEffect(() => { const i = setInterval(() => setDots(d => (d + 1) % 4), 400); return () => clearInterval(i); }, []);
+  useEffect(() => {
+    const i = setInterval(() => setDots((d) => (d + 1) % 4), 400);
+    return () => clearInterval(i);
+  }, []);
+
   return (
-    <div style={{ display: "flex", flexDirection: "column", alignItems: "center", padding: "80px 20px", gap: 20 }}>
-      <div style={{ width: 48, height: 48, border: "4px solid var(--rule)", borderTopColor: "var(--teal)", borderRadius: "50%", animation: "spin 0.9s linear infinite" }} />
-      <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
-      <div style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: 13, color: "var(--ghost)" }}>
+    <div style={{ display: "flex", flexDirection: "column", alignItems: "center", padding: "80px 20px", gap: 16 }}>
+      <div style={{
+        width: 40, height: 40,
+        border: "3px solid var(--border)",
+        borderTopColor: "var(--primary)",
+        borderRadius: "50%",
+        animation: "spin 0.8s linear infinite",
+      }} />
+      <div style={{ fontSize: 14, color: "var(--text-muted)" }}>
         {message}{".".repeat(dots)}
       </div>
     </div>
@@ -157,46 +170,130 @@ function Spinner({ message }) {
 }
 
 function QuestionCard({ q, index, showMS, selfMark, onMark }) {
-  const d = DIFFS.find(x => x.id === q.difficulty) || DIFFS[0];
+  const dc = diffColors[q.difficulty] || diffColors.easy;
+
   return (
-    <div style={{ background: "var(--card)", borderRadius: 12, border: "1px solid var(--rule)", marginBottom: 20, overflow: "hidden", boxShadow: "0 1px 4px rgba(0,0,0,0.04)" }}>
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "12px 24px", borderBottom: "1px solid var(--rule)", background: "#fafaf7", flexWrap: "wrap", gap: 8 }}>
-        <div style={{ display: "flex", alignItems: "center", gap: 12, flexWrap: "wrap" }}>
-          <span style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: 13, fontWeight: 700 }}>Q{index + 1}</span>
-          <span style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: 11, padding: "3px 10px", borderRadius: 4, background: d.bg, color: d.color, fontWeight: 600 }}>{d.label}</span>
-          <span style={{ fontFamily: "'Literata', serif", fontSize: 13, color: "var(--ghost)" }}>{q.topic}</span>
+    <div style={{
+      background: "#fff",
+      borderRadius: 8,
+      border: "1px solid var(--border)",
+      marginBottom: 16,
+      overflow: "hidden",
+    }}>
+      <div style={{
+        display: "flex",
+        justifyContent: "space-between",
+        alignItems: "center",
+        padding: "10px 20px",
+        borderBottom: "1px solid var(--border)",
+        background: "var(--bg-alt)",
+        flexWrap: "wrap",
+        gap: 8,
+      }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
+          <span style={{ fontWeight: 700, fontSize: 14 }}>Q{index + 1}</span>
+          <span style={{
+            fontSize: 12,
+            padding: "2px 10px",
+            borderRadius: 4,
+            background: dc.bg,
+            color: dc.text,
+            fontWeight: 600,
+          }}>
+            {DIFFS.find((d) => d.id === q.difficulty)?.label || q.difficulty}
+          </span>
+          <span style={{ fontSize: 13, color: "var(--text-muted)" }}>{q.topic}</span>
         </div>
-        <span style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: 12, color: "var(--ghost)", background: "var(--paper)", padding: "4px 10px", borderRadius: 4 }}>{q.marks} marks</span>
+        <span style={{
+          fontSize: 13,
+          color: "var(--text-muted)",
+          background: "var(--bg-alt)",
+          padding: "2px 8px",
+          borderRadius: 4,
+        }}>
+          {q.marks} marks
+        </span>
       </div>
-      <div style={{ padding: "20px 24px" }}>
-        <div style={{ fontFamily: "'Literata', serif", fontSize: 15.5, lineHeight: 1.8, whiteSpace: "pre-line" }}>{q.question}</div>
+
+      <div style={{ padding: "16px 20px" }}>
+        <div style={{ fontSize: 15, lineHeight: 1.75, whiteSpace: "pre-line" }}>{q.question}</div>
         {q.tags?.length > 0 && (
-          <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginTop: 12 }}>
+          <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginTop: 10 }}>
             {q.tags.map((t, i) => (
-              <span key={i} style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: 10, padding: "2px 8px", borderRadius: 4, background: "var(--paper)", color: "var(--ghost)", border: "1px solid var(--rule)" }}>{t}</span>
+              <span key={i} style={{
+                fontSize: 11,
+                padding: "2px 8px",
+                borderRadius: 4,
+                background: "var(--bg-alt)",
+                color: "var(--text-muted)",
+                border: "1px solid var(--border)",
+              }}>
+                {t}
+              </span>
             ))}
           </div>
         )}
       </div>
+
       {showMS && (
-        <div style={{ borderTop: "2px dashed var(--rule)", padding: "20px 24px", background: "#fdfcf8" }}>
-          <div style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: 11, fontWeight: 700, letterSpacing: 2, color: "var(--red)", marginBottom: 14, textTransform: "uppercase" }}>Mark Scheme</div>
+        <div style={{ borderTop: "2px dashed var(--border)", padding: "16px 20px", background: "#fafafa" }}>
+          <div style={{
+            fontSize: 12,
+            fontWeight: 700,
+            letterSpacing: 1,
+            color: "var(--danger)",
+            marginBottom: 12,
+            textTransform: "uppercase",
+          }}>
+            Mark Scheme
+          </div>
           {(q.markScheme || []).map((step, i) => (
-            <div key={i} style={{ fontFamily: "'Literata', serif", fontSize: 14, lineHeight: 1.7, padding: "5px 0 5px 16px", borderLeft: `3px solid ${d.color}40`, marginBottom: 6 }}>{step}</div>
+            <div key={i} style={{
+              fontSize: 14,
+              lineHeight: 1.7,
+              padding: "4px 0 4px 14px",
+              borderLeft: `3px solid ${dc.text}40`,
+              marginBottom: 4,
+            }}>
+              {step}
+            </div>
           ))}
-          <div style={{ display: "flex", alignItems: "center", gap: 12, marginTop: 18, padding: "12px 16px", background: "var(--paper)", borderRadius: 8 }}>
-            <span style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: 12, color: "var(--ghost)" }}>YOUR MARKS:</span>
-            <input type="number" min={0} max={q.marks} value={selfMark ?? ""} onChange={e => onMark(Math.min(q.marks, Math.max(0, parseInt(e.target.value) || 0)))}
-              style={{ width: 52, padding: "6px 8px", borderRadius: 6, border: "2px solid var(--rule)", background: "#fff", fontFamily: "'JetBrains Mono', monospace", fontSize: 15, textAlign: "center", outline: "none", color: "var(--ink)" }} />
-            <span style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: 15, color: "var(--ghost)" }}>/ {q.marks}</span>
+          <div style={{
+            display: "flex",
+            alignItems: "center",
+            gap: 10,
+            marginTop: 14,
+            padding: "10px 14px",
+            background: "var(--bg-alt)",
+            borderRadius: 6,
+          }}>
+            <span style={{ fontSize: 13, color: "var(--text-muted)", fontWeight: 500 }}>Your marks:</span>
+            <input
+              type="number"
+              min={0}
+              max={q.marks}
+              value={selfMark ?? ""}
+              onChange={(e) =>
+                onMark(Math.min(q.marks, Math.max(0, parseInt(e.target.value) || 0)))
+              }
+              style={{
+                width: 50,
+                padding: "5px 8px",
+                borderRadius: 4,
+                border: "1px solid var(--border)",
+                fontSize: 15,
+                textAlign: "center",
+                outline: "none",
+                fontFamily: "inherit",
+              }}
+            />
+            <span style={{ fontSize: 14, color: "var(--text-muted)" }}>/ {q.marks}</span>
           </div>
         </div>
       )}
     </div>
   );
 }
-
-// ─── Main App ────────────────────────────────────────────────────────────────
 
 export default function App() {
   const [page, setPage] = useState("builder");
@@ -212,7 +309,6 @@ export default function App() {
   const [source, setSource] = useState(null);
   const [forceAI, setForceAI] = useState(false);
 
-  // Load the question bank from the static JSON file in /public
   const [bank, setBank] = useState([]);
   const [bankLoaded, setBankLoaded] = useState(false);
   const [bankError, setBankError] = useState(false);
@@ -233,38 +329,43 @@ export default function App() {
       });
   }, []);
 
-  const allIds = Object.values(TOPICS_MAP).flat().map(t => t.id);
+  const allTopics = Object.values(TOPICS_MAP).flat();
 
   const toggleTopic = useCallback((id) => {
-    setSelTopics(p => { const n = new Set(p); n.has(id) ? n.delete(id) : n.add(id); return n; });
+    setSelTopics((prev) => {
+      const next = new Set(prev);
+      next.has(id) ? next.delete(id) : next.add(id);
+      return next;
+    });
   }, []);
 
   const toggleDiff = useCallback((id) => {
-    setSelDiffs(p => { const n = new Set(p); n.has(id) ? n.delete(id) : n.add(id); return n; });
+    setSelDiffs((prev) => {
+      const next = new Set(prev);
+      next.has(id) ? next.delete(id) : next.add(id);
+      return next;
+    });
   }, []);
 
-  // ── Generate from bank (instant, free, no server needed) ──
-  const generateFromBank = () => {
+  function generateFromBank() {
     setError(null);
     setShowMS(false);
     setMarks({});
 
     const picked = pickFromBank(bank, [...selTopics], [...selDiffs], count);
-
     if (!picked || picked.length === 0) {
-      setError("Not enough matching questions in the bank for your selection. Try selecting more topics/difficulties, or use Fresh AI mode.");
+      setError("Not enough matching questions for your selection. Try selecting more topics or difficulties.");
       return;
     }
 
     setQuestions(picked);
     setSource("bank");
     setPage("exam");
-  };
+  }
 
-  // ── Generate from AI (calls Anthropic API via proxy) ──
-  const generateFromAI = async () => {
+  async function generateFromAI() {
     setLoading(true);
-    setLoadMsg("Generating fresh questions with AI");
+    setLoadMsg("Generating questions");
     setError(null);
     setShowMS(false);
     setMarks({});
@@ -282,7 +383,9 @@ export default function App() {
         }),
       });
 
-      if (!response.ok) throw new Error(`API returned ${response.status}. Make sure you've deployed to Vercel with the api/generate.js file and set the ANTHROPIC_API_KEY environment variable.`);
+      if (!response.ok) {
+        throw new Error(`API returned ${response.status}. Check your Vercel deployment and API key.`);
+      }
 
       const data = await response.json();
       const text = data.content
@@ -293,7 +396,9 @@ export default function App() {
       const cleaned = text.replace(/```json|```/g, "").trim();
       const parsed = JSON.parse(cleaned);
 
-      if (!Array.isArray(parsed) || parsed.length === 0) throw new Error("No questions returned");
+      if (!Array.isArray(parsed) || parsed.length === 0) {
+        throw new Error("No questions returned");
+      }
 
       setQuestions(parsed);
       setSource("ai");
@@ -303,253 +408,477 @@ export default function App() {
     } finally {
       setLoading(false);
     }
-  };
+  }
 
-  const generate = () => {
-    if (forceAI) {
-      generateFromAI();
-    } else {
-      generateFromBank();
-    }
-  };
+  function generate() {
+    forceAI ? generateFromAI() : generateFromBank();
+  }
 
-  const totalM = questions.reduce((s, q) => s + (q.marks || 0), 0);
-  const totalS = Object.values(marks).reduce((s, v) => s + v, 0);
-  const pct = totalM > 0 ? Math.round((totalS / totalM) * 100) : 0;
-  const { g: grade, c: gradeColor } = gradeFor(pct);
+  function resetToBuilder() {
+    setPage("builder");
+    setQuestions([]);
+    setShowMS(false);
+    setMarks({});
+  }
 
-  // Count how many bank questions match current selection
-  const matchingInBank = bank.filter(
+  const totalMarks = questions.reduce((sum, q) => sum + (q.marks || 0), 0);
+  const totalScore = Object.values(marks).reduce((sum, v) => sum + v, 0);
+  const pct = totalMarks > 0 ? Math.round((totalScore / totalMarks) * 100) : 0;
+  const { grade, color: gradeColor } = gradeFor(pct);
+
+  const matchingCount = bank.filter(
     (q) => selTopics.has(q.topic) && selDiffs.has(q.difficulty)
   ).length;
 
+  const canGenerate = selTopics.size > 0 && selDiffs.size > 0 && (forceAI || bank.length > 0);
+
   return (
-    <div style={{
-      "--ink": "#1b1b2f", "--paper": "#f7f5f0", "--card": "#fff", "--ghost": "#9a9aad",
-      "--rule": "#e2dfd8", "--teal": "#1a7a6d", "--tealBg": "#e8f5f2", "--red": "#c44b3f",
-      minHeight: "100vh", background: "var(--paper)", color: "var(--ink)",
-    }}>
-      <link href="https://fonts.googleapis.com/css2?family=Literata:opsz,wght@7..72,300;7..72,400;7..72,500;7..72,600;7..72,700;7..72,800&family=JetBrains+Mono:wght@400;500;600;700&family=Fraunces:opsz,wght@9..144,700;9..144,800;9..144,900&display=swap" rel="stylesheet" />
+    <div style={{ minHeight: "100vh", background: "var(--bg)" }}>
 
       {/* Header */}
-      <div style={{ background: "#1b1b2f", color: "#fff", padding: "20px 28px", display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 10 }}>
+      <header style={{
+        background: "var(--primary)",
+        color: "#fff",
+        padding: "16px 24px",
+        display: "flex",
+        justifyContent: "space-between",
+        alignItems: "center",
+        flexWrap: "wrap",
+        gap: 10,
+      }}>
         <div>
-          <div style={{ fontFamily: "'Fraunces', serif", fontSize: 22, fontWeight: 900 }}>A-Level Maths</div>
-          <div style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: 10, opacity: 0.5, letterSpacing: 2, marginTop: 2 }}>EXAM GENERATOR</div>
+          <div style={{ fontSize: 20, fontWeight: 700 }}>A-Level Maths</div>
+          <div style={{ fontSize: 12, opacity: 0.7, marginTop: 1 }}>Exam Generator</div>
         </div>
         <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
           {bank.length > 0 && (
-            <span style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: 11, opacity: 0.5 }}>
-              📦 {bank.length} questions in bank
+            <span style={{ fontSize: 12, opacity: 0.7 }}>
+              {bank.length} questions in bank
             </span>
           )}
           {page !== "builder" && (
-            <button onClick={() => { setPage("builder"); setQuestions([]); setShowMS(false); setMarks({}); }}
-              style={{ padding: "8px 18px", borderRadius: 6, border: "1px solid rgba(255,255,255,0.25)", background: "transparent", color: "#fff", fontFamily: "'JetBrains Mono', monospace", fontSize: 12, cursor: "pointer" }}>
-              ← New Paper
+            <button
+              onClick={resetToBuilder}
+              style={{
+                padding: "6px 16px",
+                borderRadius: 4,
+                border: "1px solid rgba(255,255,255,0.3)",
+                background: "transparent",
+                color: "#fff",
+                fontSize: 13,
+                cursor: "pointer",
+                fontFamily: "inherit",
+              }}
+            >
+              New Paper
             </button>
           )}
         </div>
-      </div>
+      </header>
 
-      {/* ─── BUILDER ─── */}
+      {/* Builder page */}
       {page === "builder" && !loading && (
-        <div style={{ maxWidth: 880, margin: "0 auto", padding: "28px 20px" }}>
+        <div style={{ maxWidth: 820, margin: "0 auto", padding: "24px 20px" }}>
 
-          {/* Bank status banner */}
+          {/* Bank status */}
           {bankLoaded && !bankError && bank.length > 0 && (
-            <div style={{ padding: "14px 18px", background: "var(--tealBg)", borderRadius: 10, border: "1px solid #c5e4dd", marginBottom: 24, display: "flex", gap: 12, alignItems: "flex-start" }}>
-              <span style={{ fontSize: 16 }}>✅</span>
-              <div style={{ fontFamily: "'Literata', serif", fontSize: 13.5, lineHeight: 1.6, color: "var(--teal)" }}>
-                <strong>Question bank loaded — {bank.length} questions ready.</strong> Papers are served instantly with no API cost. Toggle "Fresh AI" if you want brand new questions.
-              </div>
+            <div style={{
+              padding: "12px 16px",
+              background: "var(--accent-light)",
+              borderRadius: 6,
+              border: "1px solid #c8e6c9",
+              marginBottom: 20,
+              fontSize: 14,
+              color: "var(--accent)",
+            }}>
+              <strong>Question bank loaded</strong> - {bank.length} questions ready for instant paper generation.
             </div>
           )}
 
           {bankLoaded && (bankError || bank.length === 0) && (
-            <div style={{ padding: "14px 18px", background: "#fdf5e6", borderRadius: 10, border: "1px solid #f0deb8", marginBottom: 24, display: "flex", gap: 12, alignItems: "flex-start" }}>
-              <span style={{ fontSize: 16 }}>⚠️</span>
-              <div style={{ fontFamily: "'Literata', serif", fontSize: 13.5, lineHeight: 1.6, color: "#c6922a" }}>
-                <strong>No question bank found.</strong> Put <code style={{ background: "#fff", padding: "1px 6px", borderRadius: 3, fontSize: 12 }}>question-bank.json</code> in your <code style={{ background: "#fff", padding: "1px 6px", borderRadius: 3, fontSize: 12 }}>public/</code> folder (run <code style={{ background: "#fff", padding: "1px 6px", borderRadius: 3, fontSize: 12 }}>generate-bank.mjs</code> to create it), or use "Fresh AI" mode which requires the Vercel API proxy.
-              </div>
+            <div style={{
+              padding: "12px 16px",
+              background: "var(--warning-light)",
+              borderRadius: 6,
+              border: "1px solid #ffe0b2",
+              marginBottom: 20,
+              fontSize: 14,
+              color: "var(--warning)",
+            }}>
+              <strong>No question bank found.</strong> Place{" "}
+              <code style={{ background: "#fff", padding: "1px 4px", borderRadius: 3, fontSize: 13 }}>
+                question-bank.json
+              </code>{" "}
+              in your public folder, or use AI generation mode.
             </div>
           )}
 
           {/* Topics */}
-          <div style={{ marginBottom: 32 }}>
-            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", marginBottom: 14 }}>
-              <div>
-                <div style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: 11, letterSpacing: 2, color: "var(--teal)", fontWeight: 700, marginBottom: 3 }}>01</div>
-                <div style={{ fontFamily: "'Fraunces', serif", fontSize: 19, fontWeight: 800 }}>Select Topics</div>
-              </div>
-              <button onClick={() => setSelTopics(p => p.size === allIds.length ? new Set() : new Set(allIds))}
-                style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: 11, color: "var(--teal)", background: "none", border: "none", cursor: "pointer", textDecoration: "underline" }}>
-                {selTopics.size === allIds.length ? "Deselect all" : "Select all"}
+          <section style={{ marginBottom: 28 }}>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12 }}>
+              <h2 style={{ fontSize: 18, fontWeight: 600 }}>Select Topics</h2>
+              <button
+                onClick={() =>
+                  setSelTopics((prev) =>
+                    prev.size === allTopics.length ? new Set() : new Set(allTopics)
+                  )
+                }
+                style={{
+                  fontSize: 13,
+                  color: "var(--primary)",
+                  background: "none",
+                  border: "none",
+                  cursor: "pointer",
+                  textDecoration: "underline",
+                  fontFamily: "inherit",
+                }}
+              >
+                {selTopics.size === allTopics.length ? "Deselect all" : "Select all"}
               </button>
             </div>
-            {Object.entries(TOPICS_MAP).map(([cat, topics]) => (
-              <div key={cat} style={{ marginBottom: 14 }}>
-                <div style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: 11, letterSpacing: 1.5, color: "var(--ghost)", marginBottom: 8, textTransform: "uppercase" }}>{cat}</div>
+
+            {Object.entries(TOPICS_MAP).map(([category, topics]) => (
+              <div key={category} style={{ marginBottom: 14 }}>
+                <div style={{
+                  fontSize: 12,
+                  fontWeight: 600,
+                  letterSpacing: 0.5,
+                  color: "var(--text-muted)",
+                  marginBottom: 8,
+                  textTransform: "uppercase",
+                }}>
+                  {category}
+                </div>
                 <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
-                  {topics.map(t => <TopicChip key={t.id} topic={t} selected={selTopics.has(t.id)} onToggle={() => toggleTopic(t.id)} />)}
+                  {topics.map((t) => (
+                    <TopicChip
+                      key={t}
+                      name={t}
+                      selected={selTopics.has(t)}
+                      onToggle={() => toggleTopic(t)}
+                    />
+                  ))}
                 </div>
               </div>
             ))}
-          </div>
+          </section>
 
           {/* Difficulty */}
-          <div style={{ marginBottom: 32 }}>
-            <div style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: 11, letterSpacing: 2, color: "var(--teal)", fontWeight: 700, marginBottom: 3 }}>02</div>
-            <div style={{ fontFamily: "'Fraunces', serif", fontSize: 19, fontWeight: 800, marginBottom: 12 }}>Difficulty</div>
+          <section style={{ marginBottom: 28 }}>
+            <h2 style={{ fontSize: 18, fontWeight: 600, marginBottom: 12 }}>Difficulty</h2>
             <div style={{ display: "flex", flexWrap: "wrap", gap: 10 }}>
-              {DIFFS.map(d => {
+              {DIFFS.map((d) => {
                 const on = selDiffs.has(d.id);
+                const dc = diffColors[d.id];
                 return (
-                  <button key={d.id} onClick={() => toggleDiff(d.id)}
-                    style={{ padding: "12px 20px", borderRadius: 10, border: on ? `2px solid ${d.color}` : "2px solid var(--rule)", background: on ? d.bg : "var(--card)", cursor: "pointer", textAlign: "left", minWidth: 160, transition: "all 0.2s" }}>
-                    <div style={{ fontFamily: "'Literata', serif", fontSize: 14, fontWeight: 600, color: on ? d.color : "var(--ink)" }}>{d.label}</div>
-                    <div style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: 11, color: "var(--ghost)" }}>{d.marks} marks</div>
+                  <button
+                    key={d.id}
+                    onClick={() => toggleDiff(d.id)}
+                    style={{
+                      padding: "10px 18px",
+                      borderRadius: 6,
+                      border: on ? `2px solid ${dc.text}` : "1px solid var(--border)",
+                      background: on ? dc.bg : "#fff",
+                      cursor: "pointer",
+                      textAlign: "left",
+                      minWidth: 140,
+                      transition: "all 0.15s",
+                      fontFamily: "inherit",
+                    }}
+                  >
+                    <div style={{ fontSize: 14, fontWeight: 600, color: on ? dc.text : "var(--text)" }}>
+                      {d.label}
+                    </div>
+                    <div style={{ fontSize: 12, color: "var(--text-muted)", marginTop: 2 }}>
+                      {d.marks} marks
+                    </div>
                   </button>
                 );
               })}
             </div>
-          </div>
+          </section>
 
-          {/* Count */}
-          <div style={{ marginBottom: 32 }}>
-            <div style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: 11, letterSpacing: 2, color: "var(--teal)", fontWeight: 700, marginBottom: 3 }}>03</div>
-            <div style={{ fontFamily: "'Fraunces', serif", fontSize: 19, fontWeight: 800, marginBottom: 12 }}>Questions</div>
-            <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
-              {COUNTS.map(n => (
-                <button key={n} onClick={() => setCount(n)}
-                  style={{ width: 52, height: 52, borderRadius: 10, border: count === n ? "2px solid var(--teal)" : "2px solid var(--rule)", background: count === n ? "var(--tealBg)" : "var(--card)", color: count === n ? "var(--teal)" : "var(--ink)", fontFamily: "'JetBrains Mono', monospace", fontSize: 18, fontWeight: 700, cursor: "pointer", transition: "all 0.2s" }}>
+          {/* Question count */}
+          <section style={{ marginBottom: 28 }}>
+            <h2 style={{ fontSize: 18, fontWeight: 600, marginBottom: 12 }}>Number of Questions</h2>
+            <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+              {COUNTS.map((n) => (
+                <button
+                  key={n}
+                  onClick={() => setCount(n)}
+                  style={{
+                    width: 48,
+                    height: 48,
+                    borderRadius: 6,
+                    border: count === n ? "2px solid var(--primary)" : "1px solid var(--border)",
+                    background: count === n ? "var(--primary-light)" : "#fff",
+                    color: count === n ? "var(--primary)" : "var(--text)",
+                    fontSize: 16,
+                    fontWeight: 600,
+                    cursor: "pointer",
+                    transition: "all 0.15s",
+                    fontFamily: "inherit",
+                  }}
+                >
                   {n}
                 </button>
               ))}
             </div>
             {!forceAI && selTopics.size > 0 && selDiffs.size > 0 && (
-              <div style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: 12, color: matchingInBank >= count ? "var(--teal)" : "var(--red)", marginTop: 10 }}>
-                {matchingInBank >= count
-                  ? `✓ ${matchingInBank} matching questions in bank — enough for ${count}`
-                  : matchingInBank > 0
-                    ? `⚠ Only ${matchingInBank} matching questions in bank (you asked for ${count}) — will serve ${matchingInBank}`
-                    : `✗ No matching questions in bank for this selection`}
+              <div style={{
+                fontSize: 13,
+                color: matchingCount >= count ? "var(--accent)" : "var(--danger)",
+                marginTop: 8,
+              }}>
+                {matchingCount >= count
+                  ? `${matchingCount} matching questions available`
+                  : matchingCount > 0
+                    ? `Only ${matchingCount} matching questions available (requested ${count})`
+                    : "No matching questions for this selection"}
               </div>
             )}
-          </div>
+          </section>
 
-          {/* Source toggle */}
-          <div style={{ marginBottom: 28 }}>
-            <div style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: 11, letterSpacing: 2, color: "var(--teal)", fontWeight: 700, marginBottom: 3 }}>04</div>
-            <div style={{ fontFamily: "'Fraunces', serif", fontSize: 19, fontWeight: 800, marginBottom: 12 }}>Source</div>
+          {/* Source */}
+          <section style={{ marginBottom: 24 }}>
+            <h2 style={{ fontSize: 18, fontWeight: 600, marginBottom: 12 }}>Source</h2>
             <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
-              <button onClick={() => setForceAI(false)}
-                style={{ flex: "1 1 200px", padding: "14px 18px", borderRadius: 10, border: !forceAI ? "2px solid var(--teal)" : "2px solid var(--rule)", background: !forceAI ? "var(--tealBg)" : "var(--card)", cursor: "pointer", textAlign: "left", transition: "all 0.2s", opacity: bank.length === 0 ? 0.5 : 1 }}>
-                <div style={{ fontFamily: "'Literata', serif", fontSize: 14, fontWeight: 600, color: !forceAI ? "var(--teal)" : "var(--ink)" }}>📦 Question Bank</div>
-                <div style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: 11, color: "var(--ghost)", marginTop: 2 }}>Instant · Free · No server needed</div>
+              <button
+                onClick={() => setForceAI(false)}
+                style={{
+                  flex: "1 1 200px",
+                  padding: "12px 16px",
+                  borderRadius: 6,
+                  border: !forceAI ? "2px solid var(--primary)" : "1px solid var(--border)",
+                  background: !forceAI ? "var(--primary-light)" : "#fff",
+                  cursor: "pointer",
+                  textAlign: "left",
+                  transition: "all 0.15s",
+                  opacity: bank.length === 0 ? 0.5 : 1,
+                  fontFamily: "inherit",
+                }}
+              >
+                <div style={{ fontSize: 14, fontWeight: 600, color: !forceAI ? "var(--primary)" : "var(--text)" }}>
+                  Question Bank
+                </div>
+                <div style={{ fontSize: 12, color: "var(--text-muted)", marginTop: 2 }}>
+                  Instant - no server required
+                </div>
               </button>
-              <button onClick={() => setForceAI(true)}
-                style={{ flex: "1 1 200px", padding: "14px 18px", borderRadius: 10, border: forceAI ? "2px solid var(--teal)" : "2px solid var(--rule)", background: forceAI ? "var(--tealBg)" : "var(--card)", cursor: "pointer", textAlign: "left", transition: "all 0.2s" }}>
-                <div style={{ fontFamily: "'Literata', serif", fontSize: 14, fontWeight: 600, color: forceAI ? "var(--teal)" : "var(--ink)" }}>🤖 Fresh AI Generation</div>
-                <div style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: 11, color: "var(--ghost)", marginTop: 2 }}>~20s · Needs Vercel deploy + API key</div>
+              <button
+                onClick={() => setForceAI(true)}
+                style={{
+                  flex: "1 1 200px",
+                  padding: "12px 16px",
+                  borderRadius: 6,
+                  border: forceAI ? "2px solid var(--primary)" : "1px solid var(--border)",
+                  background: forceAI ? "var(--primary-light)" : "#fff",
+                  cursor: "pointer",
+                  textAlign: "left",
+                  transition: "all 0.15s",
+                  fontFamily: "inherit",
+                }}
+              >
+                <div style={{ fontSize: 14, fontWeight: 600, color: forceAI ? "var(--primary)" : "var(--text)" }}>
+                  AI Generation
+                </div>
+                <div style={{ fontSize: 12, color: "var(--text-muted)", marginTop: 2 }}>
+                  Fresh questions - requires API key
+                </div>
               </button>
             </div>
-          </div>
+          </section>
 
           {/* Error */}
           {error && (
-            <div style={{ padding: "14px 18px", background: "#fdf0ee", borderRadius: 8, border: "1px solid #f0c4c0", fontFamily: "'Literata', serif", fontSize: 14, color: "var(--red)", marginBottom: 18, lineHeight: 1.6 }}>
-              ⚠ {error}
+            <div style={{
+              padding: "12px 16px",
+              background: "var(--danger-light)",
+              borderRadius: 6,
+              border: "1px solid #f5c6cb",
+              fontSize: 14,
+              color: "var(--danger)",
+              marginBottom: 16,
+            }}>
+              {error}
             </div>
           )}
 
-          {/* Generate */}
-          <button onClick={generate}
-            disabled={selTopics.size === 0 || selDiffs.size === 0 || (!forceAI && bank.length === 0)}
+          {/* Generate button */}
+          <button
+            onClick={generate}
+            disabled={!canGenerate}
             style={{
-              width: "100%", padding: "18px", borderRadius: 12, border: "none",
-              background: (selTopics.size === 0 || selDiffs.size === 0 || (!forceAI && bank.length === 0))
-                ? "var(--rule)" : "linear-gradient(135deg, #1b1b2f, #1a7a6d)",
-              color: "#fff", fontFamily: "'Fraunces', serif", fontSize: 18, fontWeight: 800,
-              cursor: (selTopics.size === 0 || selDiffs.size === 0 || (!forceAI && bank.length === 0)) ? "not-allowed" : "pointer",
-              boxShadow: (selTopics.size > 0 && selDiffs.size > 0) ? "0 6px 28px rgba(26,122,109,0.3)" : "none",
-              transition: "all 0.3s",
-            }}>
-            {forceAI ? "Generate Fresh Paper with AI" : "Build Paper from Bank"}
+              width: "100%",
+              padding: "14px",
+              borderRadius: 6,
+              border: "none",
+              background: canGenerate ? "var(--primary)" : "var(--border)",
+              color: "#fff",
+              fontSize: 16,
+              fontWeight: 600,
+              cursor: canGenerate ? "pointer" : "not-allowed",
+              transition: "background 0.15s",
+              fontFamily: "inherit",
+            }}
+          >
+            {forceAI ? "Generate Paper" : "Build Paper"}
           </button>
-          {!forceAI && bank.length > 0 && (
-            <div style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: 11, color: "var(--ghost)", textAlign: "center", marginTop: 8 }}>
-              Instant · No API calls · Completely free
-            </div>
-          )}
         </div>
       )}
 
-      {/* ─── LOADING ─── */}
+      {/* Loading */}
       {loading && <Spinner message={loadMsg} />}
 
-      {/* ─── EXAM ─── */}
+      {/* Exam page */}
       {page === "exam" && !loading && (
-        <div style={{ maxWidth: 800, margin: "0 auto", padding: "28px 20px" }}>
+        <div style={{ maxWidth: 760, margin: "0 auto", padding: "24px 20px" }}>
 
           {source && (
             <div style={{
-              display: "inline-flex", alignItems: "center", gap: 8,
-              padding: "6px 14px", borderRadius: 6, marginBottom: 16,
-              background: source === "bank" ? "var(--tealBg)" : "#fdf5e6",
-              border: source === "bank" ? "1px solid #c5e4dd" : "1px solid #f0deb8",
-              fontFamily: "'JetBrains Mono', monospace", fontSize: 11,
-              color: source === "bank" ? "var(--teal)" : "#c6922a",
+              display: "inline-block",
+              padding: "4px 12px",
+              borderRadius: 4,
+              marginBottom: 16,
+              fontSize: 13,
+              background: source === "bank" ? "var(--accent-light)" : "var(--warning-light)",
+              color: source === "bank" ? "var(--accent)" : "var(--warning)",
+              border: source === "bank" ? "1px solid #c8e6c9" : "1px solid #ffe0b2",
             }}>
-              {source === "bank" ? "📦 Served from bank — no API credits used" : "🤖 Freshly generated by AI"}
+              {source === "bank" ? "From question bank" : "AI generated"}
             </div>
           )}
 
           {/* Paper header */}
-          <div style={{ textAlign: "center", padding: "28px 24px", background: "var(--card)", borderRadius: 14, border: "1px solid var(--rule)", marginBottom: 24, boxShadow: "0 2px 8px rgba(0,0,0,0.04)" }}>
-            <div style={{ fontFamily: "'Fraunces', serif", fontSize: 22, fontWeight: 900, marginBottom: 4 }}>A-Level Mathematics</div>
-            <div style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: 12, color: "var(--ghost)", letterSpacing: 1.5, marginBottom: 16 }}>PRACTICE EXAMINATION PAPER</div>
-            <div style={{ display: "flex", justifyContent: "center", gap: 24, fontFamily: "'JetBrains Mono', monospace", fontSize: 13, flexWrap: "wrap" }}>
-              <span><strong>{questions.length}</strong> Questions</span>
-              <span><strong>{totalM}</strong> Marks</span>
-              <span><strong>{Math.round(totalM * 1.2)}</strong> Min</span>
+          <div style={{
+            textAlign: "center",
+            padding: "24px 20px",
+            background: "#fff",
+            borderRadius: 8,
+            border: "1px solid var(--border)",
+            marginBottom: 20,
+          }}>
+            <div style={{ fontSize: 20, fontWeight: 700, marginBottom: 4 }}>
+              A-Level Mathematics
             </div>
-            <div style={{ marginTop: 16, padding: "10px 14px", background: "var(--paper)", borderRadius: 8, fontFamily: "'Literata', serif", fontSize: 13.5, color: "var(--ghost)", lineHeight: 1.5 }}>
-              Answer <strong>all</strong> questions. Show working clearly. Click "Reveal Mark Schemes" when done.
+            <div style={{ fontSize: 13, color: "var(--text-muted)", letterSpacing: 1, marginBottom: 14, textTransform: "uppercase" }}>
+              Practice Paper
+            </div>
+            <div style={{ display: "flex", justifyContent: "center", gap: 20, fontSize: 14, flexWrap: "wrap" }}>
+              <span><strong>{questions.length}</strong> Questions</span>
+              <span><strong>{totalMarks}</strong> Marks</span>
+              <span><strong>{Math.round(totalMarks * 1.2)}</strong> Minutes</span>
+            </div>
+            <div style={{
+              marginTop: 14,
+              padding: "10px 14px",
+              background: "var(--bg-alt)",
+              borderRadius: 6,
+              fontSize: 14,
+              color: "var(--text-muted)",
+            }}>
+              Answer <strong>all</strong> questions. Show your working clearly.
             </div>
           </div>
 
           {questions.map((q, i) => (
-            <QuestionCard key={q.id || i} q={q} index={i} showMS={showMS}
+            <QuestionCard
+              key={q.id || i}
+              q={q}
+              index={i}
+              showMS={showMS}
               selfMark={marks[q.id || i]}
-              onMark={(v) => setMarks(p => ({ ...p, [q.id || i]: v }))} />
+              onMark={(v) => setMarks((prev) => ({ ...prev, [q.id || i]: v }))}
+            />
           ))}
 
           {/* Bottom bar */}
-          <div style={{ position: "sticky", bottom: 12, padding: "14px 20px", background: "#ffffffee", borderRadius: 14, border: "1px solid var(--rule)", backdropFilter: "blur(12px)", display: "flex", justifyContent: "space-between", alignItems: "center", boxShadow: "0 -2px 16px rgba(0,0,0,0.06)", marginTop: 16, flexWrap: "wrap", gap: 12 }}>
+          <div style={{
+            position: "sticky",
+            bottom: 12,
+            padding: "12px 16px",
+            background: "rgba(255,255,255,0.95)",
+            borderRadius: 8,
+            border: "1px solid var(--border)",
+            backdropFilter: "blur(8px)",
+            display: "flex",
+            justifyContent: "space-between",
+            alignItems: "center",
+            boxShadow: "var(--shadow-md)",
+            marginTop: 12,
+            flexWrap: "wrap",
+            gap: 12,
+          }}>
             {!showMS ? (
-              <button onClick={() => setShowMS(true)}
-                style={{ flex: 1, padding: "14px", borderRadius: 10, border: "none", background: "linear-gradient(135deg, #c44b3f, #e07a3a)", color: "#fff", fontFamily: "'Fraunces', serif", fontSize: 16, fontWeight: 800, cursor: "pointer", boxShadow: "0 4px 16px rgba(196,75,63,0.3)" }}>
-                Reveal Mark Schemes & Self-Assess
+              <button
+                onClick={() => setShowMS(true)}
+                style={{
+                  flex: 1,
+                  padding: "12px",
+                  borderRadius: 6,
+                  border: "none",
+                  background: "var(--danger)",
+                  color: "#fff",
+                  fontSize: 15,
+                  fontWeight: 600,
+                  cursor: "pointer",
+                  fontFamily: "inherit",
+                }}
+              >
+                Reveal Mark Schemes
               </button>
             ) : (
               <>
                 <div>
-                  <div style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: 11, color: "var(--ghost)", letterSpacing: 1.5, marginBottom: 3, textTransform: "uppercase" }}>Score</div>
-                  <div style={{ fontFamily: "'Fraunces', serif", fontSize: 24, fontWeight: 900, color: gradeColor }}>
-                    {totalS}/{totalM}
-                    <span style={{ fontSize: 13, fontFamily: "'JetBrains Mono', monospace", marginLeft: 10, padding: "3px 10px", background: gradeColor + "15", borderRadius: 5, verticalAlign: "middle", fontWeight: 600 }}>
-                      {pct}% · {grade}
+                  <div style={{ fontSize: 12, color: "var(--text-muted)", marginBottom: 2, textTransform: "uppercase", letterSpacing: 0.5 }}>
+                    Score
+                  </div>
+                  <div style={{ fontSize: 22, fontWeight: 700, color: gradeColor }}>
+                    {totalScore}/{totalMarks}
+                    <span style={{
+                      fontSize: 13,
+                      marginLeft: 8,
+                      padding: "2px 8px",
+                      background: gradeColor + "18",
+                      borderRadius: 4,
+                      verticalAlign: "middle",
+                      fontWeight: 600,
+                    }}>
+                      {pct}% - {grade}
                     </span>
                   </div>
                 </div>
                 <div style={{ display: "flex", gap: 8 }}>
-                  <button onClick={generate}
-                    style={{ padding: "10px 20px", borderRadius: 8, border: "2px solid var(--teal)", background: "transparent", color: "var(--teal)", fontFamily: "'JetBrains Mono', monospace", fontSize: 12, fontWeight: 600, cursor: "pointer" }}>
+                  <button
+                    onClick={generate}
+                    style={{
+                      padding: "8px 16px",
+                      borderRadius: 4,
+                      border: "2px solid var(--primary)",
+                      background: "transparent",
+                      color: "var(--primary)",
+                      fontSize: 13,
+                      fontWeight: 600,
+                      cursor: "pointer",
+                      fontFamily: "inherit",
+                    }}
+                  >
                     New Paper
                   </button>
-                  <button onClick={() => { setPage("builder"); setQuestions([]); setShowMS(false); setMarks({}); }}
-                    style={{ padding: "10px 20px", borderRadius: 8, border: "2px solid var(--rule)", background: "transparent", color: "var(--ink)", fontFamily: "'JetBrains Mono', monospace", fontSize: 12, fontWeight: 600, cursor: "pointer" }}>
+                  <button
+                    onClick={resetToBuilder}
+                    style={{
+                      padding: "8px 16px",
+                      borderRadius: 4,
+                      border: "1px solid var(--border)",
+                      background: "transparent",
+                      color: "var(--text)",
+                      fontSize: 13,
+                      fontWeight: 600,
+                      cursor: "pointer",
+                      fontFamily: "inherit",
+                    }}
+                  >
                     Change Topics
                   </button>
                 </div>

@@ -1,25 +1,14 @@
-// ============================================================================
-// api/questions.js — Vercel serverless function
-// ============================================================================
-// Serves questions from the pre-generated bank (question-bank.json).
-// Falls back to live AI generation only if the bank doesn't have enough
-// matching questions — saving your API credits.
-// ============================================================================
-
 import fs from "fs";
 import path from "path";
 
-// Load the question bank at cold-start (stays in memory for warm invocations)
 let questionBank = [];
 try {
   const bankPath = path.join(process.cwd(), "public", "question-bank.json");
-  const raw = fs.readFileSync(bankPath, "utf-8");
-  questionBank = JSON.parse(raw);
+  questionBank = JSON.parse(fs.readFileSync(bankPath, "utf-8"));
 } catch {
-  console.warn("No question-bank.json found — all requests will use live AI generation");
+  console.warn("No question-bank.json found, all requests will use AI generation");
 }
 
-// Fisher-Yates shuffle
 function shuffle(arr) {
   const a = [...arr];
   for (let i = a.length - 1; i > 0; i--) {
@@ -29,15 +18,12 @@ function shuffle(arr) {
   return a;
 }
 
-// Try to fulfil the request from the bank
 function serveFromBank(topics, difficulties, count) {
   const matching = questionBank.filter(
     (q) => topics.includes(q.topic) && difficulties.includes(q.difficulty)
   );
+  if (matching.length < count) return null;
 
-  if (matching.length < count) return null; // Not enough — need AI generation
-
-  // Shuffle and pick, trying to spread across topics evenly
   const byTopic = {};
   for (const q of shuffle(matching)) {
     if (!byTopic[q.topic]) byTopic[q.topic] = [];
@@ -54,21 +40,17 @@ function serveFromBank(topics, difficulties, count) {
       selected.push(byTopic[topic].pop());
     }
     idx++;
-    // Safety: if we've gone around and all topics are empty, break
     if (idx > count * 2) break;
   }
 
-  // Sort by difficulty order
   const order = { easy: 0, medium: 1, hard: 2 };
   selected.sort((a, b) => order[a.difficulty] - order[b.difficulty]);
-
   return selected;
 }
 
-// Live AI generation (fallback)
 async function generateLive(topics, difficulties, count) {
-  const API_KEY = process.env.ANTHROPIC_API_KEY;
-  if (!API_KEY) throw new Error("ANTHROPIC_API_KEY not configured");
+  const apiKey = process.env.ANTHROPIC_API_KEY;
+  if (!apiKey) throw new Error("ANTHROPIC_API_KEY not configured");
 
   const diffDescs = difficulties.map((d) => {
     if (d === "easy") return "AS-level (2-4 marks each)";
@@ -88,7 +70,7 @@ Respond with ONLY a valid JSON array.`;
     method: "POST",
     headers: {
       "Content-Type": "application/json",
-      "x-api-key": API_KEY,
+      "x-api-key": apiKey,
       "anthropic-version": "2023-06-01",
     },
     body: JSON.stringify({
@@ -101,14 +83,14 @@ Respond with ONLY a valid JSON array.`;
   if (!response.ok) throw new Error(`API error: ${response.status}`);
 
   const data = await response.json();
-  const text = data.content.filter((b) => b.type === "text").map((b) => b.text).join("");
+  const text = data.content
+    .filter((b) => b.type === "text")
+    .map((b) => b.text)
+    .join("");
   return JSON.parse(text.replace(/```json|```/g, "").trim());
 }
 
-// ─── Handler ─────────────────────────────────────────────────────────────────
-
 export default async function handler(req, res) {
-  // CORS headers for local dev
   res.setHeader("Access-Control-Allow-Origin", "*");
   res.setHeader("Access-Control-Allow-Methods", "POST, OPTIONS");
   res.setHeader("Access-Control-Allow-Headers", "Content-Type");
@@ -123,7 +105,6 @@ export default async function handler(req, res) {
   }
 
   try {
-    // Try bank first (unless forceAI is true)
     if (!forceAI) {
       const cached = serveFromBank(topics, difficulties, count);
       if (cached) {
@@ -135,12 +116,8 @@ export default async function handler(req, res) {
       }
     }
 
-    // Fallback to live generation
     const questions = await generateLive(topics, difficulties, count);
-    return res.status(200).json({
-      source: "ai",
-      questions,
-    });
+    return res.status(200).json({ source: "ai", questions });
   } catch (err) {
     console.error("Generation error:", err);
     return res.status(500).json({ error: err.message });
