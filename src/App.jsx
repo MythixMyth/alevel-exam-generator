@@ -35,13 +35,13 @@ const DIFFS = [
 const COUNTS = [5, 8, 10, 12, 15];
 
 function gradeFor(pct) {
-  if (pct >= 90) return { grade: "A*", color: "#2e7d32" };
-  if (pct >= 80) return { grade: "A", color: "#2e7d32" };
-  if (pct >= 70) return { grade: "B", color: "#1565c0" };
-  if (pct >= 60) return { grade: "C", color: "#ed6c02" };
-  if (pct >= 50) return { grade: "D", color: "#e65100" };
-  if (pct >= 40) return { grade: "E", color: "#d32f2f" };
-  return { grade: "U", color: "#d32f2f" };
+  if (pct >= 90) return { grade: "A*", color: "#22c55e" };
+  if (pct >= 80) return { grade: "A", color: "#22c55e" };
+  if (pct >= 70) return { grade: "B", color: "#3b82f6" };
+  if (pct >= 60) return { grade: "C", color: "#f59e0b" };
+  if (pct >= 50) return { grade: "D", color: "#f97316" };
+  if (pct >= 40) return { grade: "E", color: "#ef4444" };
+  return { grade: "U", color: "#ef4444" };
 }
 
 function shuffle(arr) {
@@ -118,9 +118,9 @@ function pickFromBank(bank, topics, difficulties, count) {
 }
 
 const diffColors = {
-  easy: { text: "#2e7d32", bg: "#e8f5e9" },
-  medium: { text: "#ed6c02", bg: "#fff4e5" },
-  hard: { text: "#d32f2f", bg: "#fdecea" },
+  easy: { text: "#22c55e", bg: "#0a2e1a" },
+  medium: { text: "#f59e0b", bg: "#2d2305" },
+  hard: { text: "#ef4444", bg: "#2d1215" },
 };
 
 function TopicChip({ name, selected, onToggle }) {
@@ -132,7 +132,7 @@ function TopicChip({ name, selected, onToggle }) {
         padding: "8px 16px",
         borderRadius: 6,
         border: selected ? "2px solid var(--primary)" : "1px solid var(--border)",
-        background: selected ? "var(--primary-light)" : "#fff",
+        background: selected ? "var(--primary-light)" : "var(--bg-alt)",
         color: selected ? "var(--primary)" : "var(--text)",
         cursor: "pointer",
         fontSize: 14,
@@ -174,7 +174,7 @@ function QuestionCard({ q, index, showMS, selfMark, onMark }) {
 
   return (
     <div style={{
-      background: "#fff",
+      background: "var(--bg-card)",
       borderRadius: 8,
       border: "1px solid var(--border)",
       marginBottom: 16,
@@ -236,7 +236,7 @@ function QuestionCard({ q, index, showMS, selfMark, onMark }) {
       </div>
 
       {showMS && (
-        <div style={{ borderTop: "2px dashed var(--border)", padding: "16px 20px", background: "#fafafa" }}>
+        <div style={{ borderTop: "2px dashed var(--border)", padding: "16px 20px", background: "var(--bg-alt)" }}>
           <div style={{
             fontSize: 12,
             fontWeight: 700,
@@ -281,6 +281,8 @@ function QuestionCard({ q, index, showMS, selfMark, onMark }) {
                 padding: "5px 8px",
                 borderRadius: 4,
                 border: "1px solid var(--border)",
+                background: "var(--bg)",
+                color: "var(--text)",
                 fontSize: 15,
                 textAlign: "center",
                 outline: "none",
@@ -437,22 +439,25 @@ export default function App() {
 
       {/* Header */}
       <header style={{
-        background: "var(--primary)",
-        color: "#fff",
+        background: "#0b1120",
+        color: "#f1f5f9",
         padding: "16px 24px",
         display: "flex",
         justifyContent: "space-between",
         alignItems: "center",
         flexWrap: "wrap",
         gap: 10,
+        borderBottom: "1px solid var(--border)",
       }}>
         <div>
-          <div style={{ fontSize: 20, fontWeight: 700 }}>A-Level Maths</div>
-          <div style={{ fontSize: 12, opacity: 0.7, marginTop: 1 }}>Exam Generator</div>
+          <div style={{ fontSize: 20, fontWeight: 700 }}>
+            <span style={{ color: "var(--primary)" }}>A-Level</span> Maths
+          </div>
+          <div style={{ fontSize: 12, color: "var(--text-muted)", marginTop: 1 }}>Exam Generator</div>
         </div>
         <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
           {bank.length > 0 && (
-            <span style={{ fontSize: 12, opacity: 0.7 }}>
+            <span style={{ fontSize: 12, color: "var(--text-muted)" }}>
               {bank.length} questions in bank
             </span>
           )}
@@ -462,12 +467,13 @@ export default function App() {
               style={{
                 padding: "6px 16px",
                 borderRadius: 4,
-                border: "1px solid rgba(255,255,255,0.3)",
-                background: "transparent",
-                color: "#fff",
+                border: "1px solid var(--border)",
+                background: "var(--primary-light)",
+                color: "var(--primary)",
                 fontSize: 13,
                 cursor: "pointer",
                 fontFamily: "inherit",
+                fontWeight: 600,
               }}
             >
               New Paper
@@ -486,7 +492,7 @@ export default function App() {
               padding: "12px 16px",
               background: "var(--accent-light)",
               borderRadius: 6,
-              border: "1px solid #c8e6c9",
+              border: "1px solid #16a34a30",
               marginBottom: 20,
               fontSize: 14,
               color: "var(--accent)",
@@ -500,13 +506,13 @@ export default function App() {
               padding: "12px 16px",
               background: "var(--warning-light)",
               borderRadius: 6,
-              border: "1px solid #ffe0b2",
+              border: "1px solid #f59e0b30",
               marginBottom: 20,
               fontSize: 14,
               color: "var(--warning)",
             }}>
               <strong>No question bank found.</strong> Place{" "}
-              <code style={{ background: "#fff", padding: "1px 4px", borderRadius: 3, fontSize: 13 }}>
+              <code style={{ background: "var(--bg-alt)", padding: "1px 4px", borderRadius: 3, fontSize: 13 }}>
                 question-bank.json
               </code>{" "}
               in your public folder, or use AI generation mode.
@@ -578,7 +584,7 @@ export default function App() {
                       padding: "10px 18px",
                       borderRadius: 6,
                       border: on ? `2px solid ${dc.text}` : "1px solid var(--border)",
-                      background: on ? dc.bg : "#fff",
+                      background: on ? dc.bg : "var(--bg-alt)",
                       cursor: "pointer",
                       textAlign: "left",
                       minWidth: 140,
@@ -611,7 +617,7 @@ export default function App() {
                     height: 48,
                     borderRadius: 6,
                     border: count === n ? "2px solid var(--primary)" : "1px solid var(--border)",
-                    background: count === n ? "var(--primary-light)" : "#fff",
+                    background: count === n ? "var(--primary-light)" : "var(--bg-alt)",
                     color: count === n ? "var(--primary)" : "var(--text)",
                     fontSize: 16,
                     fontWeight: 600,
@@ -650,7 +656,7 @@ export default function App() {
                   padding: "12px 16px",
                   borderRadius: 6,
                   border: !forceAI ? "2px solid var(--primary)" : "1px solid var(--border)",
-                  background: !forceAI ? "var(--primary-light)" : "#fff",
+                  background: !forceAI ? "var(--primary-light)" : "var(--bg-alt)",
                   cursor: "pointer",
                   textAlign: "left",
                   transition: "all 0.15s",
@@ -672,7 +678,7 @@ export default function App() {
                   padding: "12px 16px",
                   borderRadius: 6,
                   border: forceAI ? "2px solid var(--primary)" : "1px solid var(--border)",
-                  background: forceAI ? "var(--primary-light)" : "#fff",
+                  background: forceAI ? "var(--primary-light)" : "var(--bg-alt)",
                   cursor: "pointer",
                   textAlign: "left",
                   transition: "all 0.15s",
@@ -695,7 +701,7 @@ export default function App() {
               padding: "12px 16px",
               background: "var(--danger-light)",
               borderRadius: 6,
-              border: "1px solid #f5c6cb",
+              border: "1px solid #ef444430",
               fontSize: 14,
               color: "var(--danger)",
               marginBottom: 16,
@@ -714,7 +720,7 @@ export default function App() {
               borderRadius: 6,
               border: "none",
               background: canGenerate ? "var(--primary)" : "var(--border)",
-              color: "#fff",
+              color: "#ffffff",
               fontSize: 16,
               fontWeight: 600,
               cursor: canGenerate ? "pointer" : "not-allowed",
@@ -743,7 +749,7 @@ export default function App() {
               fontSize: 13,
               background: source === "bank" ? "var(--accent-light)" : "var(--warning-light)",
               color: source === "bank" ? "var(--accent)" : "var(--warning)",
-              border: source === "bank" ? "1px solid #c8e6c9" : "1px solid #ffe0b2",
+              border: source === "bank" ? "1px solid #22c55e30" : "1px solid #f59e0b30",
             }}>
               {source === "bank" ? "From question bank" : "AI generated"}
             </div>
@@ -753,7 +759,7 @@ export default function App() {
           <div style={{
             textAlign: "center",
             padding: "24px 20px",
-            background: "#fff",
+            background: "var(--bg-card)",
             borderRadius: 8,
             border: "1px solid var(--border)",
             marginBottom: 20,
@@ -796,15 +802,15 @@ export default function App() {
           <div style={{
             position: "sticky",
             bottom: 12,
-            padding: "12px 16px",
-            background: "rgba(255,255,255,0.95)",
+            padding: "14px 20px",
+            background: "rgba(11, 17, 32, 0.95)",
             borderRadius: 8,
             border: "1px solid var(--border)",
             backdropFilter: "blur(8px)",
             display: "flex",
             justifyContent: "space-between",
             alignItems: "center",
-            boxShadow: "var(--shadow-md)",
+            boxShadow: "0 -4px 20px rgba(0, 0, 0, 0.4)",
             marginTop: 12,
             flexWrap: "wrap",
             gap: 12,
@@ -817,8 +823,8 @@ export default function App() {
                   padding: "12px",
                   borderRadius: 6,
                   border: "none",
-                  background: "var(--danger)",
-                  color: "#fff",
+                  background: "var(--primary)",
+                  color: "#ffffff",
                   fontSize: 15,
                   fontWeight: 600,
                   cursor: "pointer",
