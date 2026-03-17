@@ -46,6 +46,83 @@ const gradeFor = (pct) => {
   return { g: "U", c: "#c44b3f" };
 };
 
+function shuffle(arr) {
+  const a = [...arr];
+  for (let i = a.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [a[i], a[j]] = [a[j], a[i]];
+  }
+  return a;
+}
+
+// ─── Build prompt for AI generation ──────────────────────────────────────────
+function buildPrompt(topics, difficulties, count) {
+  const diffDescs = difficulties.map((d) => {
+    if (d === "easy") return "AS-level (2-4 marks each, straightforward single-concept)";
+    if (d === "medium") return "A2-standard (4-6 marks each, multi-step requiring two+ techniques)";
+    return "A2-challenge (6-10 marks each, synoptic, proof-based, or modelling)";
+  });
+
+  return `You are an expert A-Level Mathematics examiner for UK exam boards (Edexcel/AQA/OCR style).
+
+Generate exactly ${count} exam questions for an A-Level Maths practice paper.
+
+TOPICS to cover (distribute questions across these): ${topics.join(", ")}
+DIFFICULTY LEVELS to include: ${diffDescs.join("; ")}
+
+For EACH question, respond with a JSON array. Each element must have:
+- "topic": the topic name
+- "difficulty": "easy", "medium", or "hard"
+- "marks": total marks (integer)
+- "question": full question text with Unicode maths (x², √, π, θ, ∫, Σ, ≤, ≥, →). Multi-part: (a), (b), (c) with [N marks].
+- "markScheme": array of strings, each one mark point with [1 mark] etc.
+- "tags": array of 1-3 sub-topic tags
+
+RULES:
+- Realistic UK A-Level standard
+- Self-contained questions
+- Detailed mark schemes for self-assessment
+- Vary styles: calculation, "show that", prove, contextual/modelling
+- Multi-part questions should build on earlier parts
+
+Respond with ONLY a valid JSON array. No markdown fences, no explanation.`;
+}
+
+// ─── Pick questions from the bank ────────────────────────────────────────────
+function pickFromBank(bank, topics, difficulties, count) {
+  const matching = bank.filter(
+    (q) => topics.includes(q.topic) && difficulties.includes(q.difficulty)
+  );
+
+  if (matching.length === 0) return null;
+
+  // Spread across topics evenly
+  const shuffled = shuffle(matching);
+  const byTopic = {};
+  for (const q of shuffled) {
+    if (!byTopic[q.topic]) byTopic[q.topic] = [];
+    byTopic[q.topic].push(q);
+  }
+
+  const selected = [];
+  const topicKeys = shuffle(Object.keys(byTopic));
+  let idx = 0;
+  const limit = Math.min(count, matching.length);
+
+  while (selected.length < limit) {
+    const topic = topicKeys[idx % topicKeys.length];
+    if (byTopic[topic] && byTopic[topic].length > 0) {
+      selected.push(byTopic[topic].pop());
+    }
+    idx++;
+    if (idx > limit * 3) break;
+  }
+
+  const order = { easy: 0, medium: 1, hard: 2 };
+  selected.sort((a, b) => order[a.difficulty] - order[b.difficulty]);
+  return selected;
+}
+
 // ─── Components ──────────────────────────────────────────────────────────────
 
 function TopicChip({ topic, selected, onToggle }) {
@@ -83,16 +160,14 @@ function QuestionCard({ q, index, showMS, selfMark, onMark }) {
   const d = DIFFS.find(x => x.id === q.difficulty) || DIFFS[0];
   return (
     <div style={{ background: "var(--card)", borderRadius: 12, border: "1px solid var(--rule)", marginBottom: 20, overflow: "hidden", boxShadow: "0 1px 4px rgba(0,0,0,0.04)" }}>
-      {/* Header */}
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "12px 24px", borderBottom: "1px solid var(--rule)", background: "#fafaf7" }}>
-        <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "12px 24px", borderBottom: "1px solid var(--rule)", background: "#fafaf7", flexWrap: "wrap", gap: 8 }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 12, flexWrap: "wrap" }}>
           <span style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: 13, fontWeight: 700 }}>Q{index + 1}</span>
           <span style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: 11, padding: "3px 10px", borderRadius: 4, background: d.bg, color: d.color, fontWeight: 600 }}>{d.label}</span>
           <span style={{ fontFamily: "'Literata', serif", fontSize: 13, color: "var(--ghost)" }}>{q.topic}</span>
         </div>
         <span style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: 12, color: "var(--ghost)", background: "var(--paper)", padding: "4px 10px", borderRadius: 4 }}>{q.marks} marks</span>
       </div>
-      {/* Body */}
       <div style={{ padding: "20px 24px" }}>
         <div style={{ fontFamily: "'Literata', serif", fontSize: 15.5, lineHeight: 1.8, whiteSpace: "pre-line" }}>{q.question}</div>
         {q.tags?.length > 0 && (
@@ -103,7 +178,6 @@ function QuestionCard({ q, index, showMS, selfMark, onMark }) {
           </div>
         )}
       </div>
-      {/* Mark scheme */}
       {showMS && (
         <div style={{ borderTop: "2px dashed var(--rule)", padding: "20px 24px", background: "#fdfcf8" }}>
           <div style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: 11, fontWeight: 700, letterSpacing: 2, color: "var(--red)", marginBottom: 14, textTransform: "uppercase" }}>Mark Scheme</div>
@@ -130,14 +204,34 @@ export default function App() {
   const [selDiffs, setSelDiffs] = useState(new Set(["easy", "medium"]));
   const [count, setCount] = useState(10);
   const [loading, setLoading] = useState(false);
-  const [loadMsg, setLoadMsg] = useState("Preparing your exam paper");
+  const [loadMsg, setLoadMsg] = useState("");
   const [error, setError] = useState(null);
   const [questions, setQuestions] = useState([]);
   const [showMS, setShowMS] = useState(false);
   const [marks, setMarks] = useState({});
-  const [source, setSource] = useState(null); // "bank" or "ai"
-  const [bankSize, setBankSize] = useState(null);
+  const [source, setSource] = useState(null);
   const [forceAI, setForceAI] = useState(false);
+
+  // Load the question bank from the static JSON file in /public
+  const [bank, setBank] = useState([]);
+  const [bankLoaded, setBankLoaded] = useState(false);
+  const [bankError, setBankError] = useState(false);
+
+  useEffect(() => {
+    fetch("/question-bank.json")
+      .then((r) => {
+        if (!r.ok) throw new Error("Not found");
+        return r.json();
+      })
+      .then((data) => {
+        setBank(data);
+        setBankLoaded(true);
+      })
+      .catch(() => {
+        setBankError(true);
+        setBankLoaded(true);
+      });
+  }, []);
 
   const allIds = Object.values(TOPICS_MAP).flat().map(t => t.id);
 
@@ -149,36 +243,60 @@ export default function App() {
     setSelDiffs(p => { const n = new Set(p); n.has(id) ? n.delete(id) : n.add(id); return n; });
   }, []);
 
-  const generate = async () => {
-    setLoading(true);
+  // ── Generate from bank (instant, free, no server needed) ──
+  const generateFromBank = () => {
     setError(null);
     setShowMS(false);
     setMarks({});
-    setSource(null);
-    setBankSize(null);
 
-    setLoadMsg(forceAI ? "Generating fresh questions with AI" : "Searching the question bank");
+    const picked = pickFromBank(bank, [...selTopics], [...selDiffs], count);
+
+    if (!picked || picked.length === 0) {
+      setError("Not enough matching questions in the bank for your selection. Try selecting more topics/difficulties, or use Fresh AI mode.");
+      return;
+    }
+
+    setQuestions(picked);
+    setSource("bank");
+    setPage("exam");
+  };
+
+  // ── Generate from AI (calls Anthropic API via proxy) ──
+  const generateFromAI = async () => {
+    setLoading(true);
+    setLoadMsg("Generating fresh questions with AI");
+    setError(null);
+    setShowMS(false);
+    setMarks({});
+
+    const prompt = buildPrompt([...selTopics], [...selDiffs], count);
 
     try {
-      const res = await fetch("/api/questions", {
+      const response = await fetch("/api/generate", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          topics: [...selTopics],
-          difficulties: [...selDiffs],
-          count,
-          forceAI,
+          model: "claude-sonnet-4-20250514",
+          max_tokens: 8000,
+          messages: [{ role: "user", content: prompt }],
         }),
       });
 
-      if (!res.ok) throw new Error(`Server error: ${res.status}`);
+      if (!response.ok) throw new Error(`API returned ${response.status}. Make sure you've deployed to Vercel with the api/generate.js file and set the ANTHROPIC_API_KEY environment variable.`);
 
-      const data = await res.json();
-      if (!data.questions?.length) throw new Error("No questions returned");
+      const data = await response.json();
+      const text = data.content
+        .filter((b) => b.type === "text")
+        .map((b) => b.text)
+        .join("");
 
-      setQuestions(data.questions);
-      setSource(data.source);
-      setBankSize(data.bankSize || null);
+      const cleaned = text.replace(/```json|```/g, "").trim();
+      const parsed = JSON.parse(cleaned);
+
+      if (!Array.isArray(parsed) || parsed.length === 0) throw new Error("No questions returned");
+
+      setQuestions(parsed);
+      setSource("ai");
       setPage("exam");
     } catch (err) {
       setError(err.message);
@@ -187,10 +305,23 @@ export default function App() {
     }
   };
 
+  const generate = () => {
+    if (forceAI) {
+      generateFromAI();
+    } else {
+      generateFromBank();
+    }
+  };
+
   const totalM = questions.reduce((s, q) => s + (q.marks || 0), 0);
   const totalS = Object.values(marks).reduce((s, v) => s + v, 0);
   const pct = totalM > 0 ? Math.round((totalS / totalM) * 100) : 0;
   const { g: grade, c: gradeColor } = gradeFor(pct);
+
+  // Count how many bank questions match current selection
+  const matchingInBank = bank.filter(
+    (q) => selTopics.has(q.topic) && selDiffs.has(q.difficulty)
+  ).length;
 
   return (
     <div style={{
@@ -201,15 +332,15 @@ export default function App() {
       <link href="https://fonts.googleapis.com/css2?family=Literata:opsz,wght@7..72,300;7..72,400;7..72,500;7..72,600;7..72,700;7..72,800&family=JetBrains+Mono:wght@400;500;600;700&family=Fraunces:opsz,wght@9..144,700;9..144,800;9..144,900&display=swap" rel="stylesheet" />
 
       {/* Header */}
-      <div style={{ background: "#1b1b2f", color: "#fff", padding: "20px 28px", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+      <div style={{ background: "#1b1b2f", color: "#fff", padding: "20px 28px", display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 10 }}>
         <div>
           <div style={{ fontFamily: "'Fraunces', serif", fontSize: 22, fontWeight: 900 }}>A-Level Maths</div>
-          <div style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: 10, opacity: 0.5, letterSpacing: 2, marginTop: 2 }}>EXAM GENERATOR · CACHED + AI</div>
+          <div style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: 10, opacity: 0.5, letterSpacing: 2, marginTop: 2 }}>EXAM GENERATOR</div>
         </div>
         <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-          {bankSize != null && (
+          {bank.length > 0 && (
             <span style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: 11, opacity: 0.5 }}>
-              📦 {bankSize} questions in bank
+              📦 {bank.length} questions in bank
             </span>
           )}
           {page !== "builder" && (
@@ -225,13 +356,24 @@ export default function App() {
       {page === "builder" && !loading && (
         <div style={{ maxWidth: 880, margin: "0 auto", padding: "28px 20px" }}>
 
-          {/* Info */}
-          <div style={{ padding: "14px 18px", background: "var(--tealBg)", borderRadius: 10, border: "1px solid #c5e4dd", marginBottom: 28, display: "flex", gap: 12, alignItems: "flex-start" }}>
-            <span style={{ fontSize: 16 }}>💡</span>
-            <div style={{ fontFamily: "'Literata', serif", fontSize: 13.5, lineHeight: 1.6, color: "var(--teal)" }}>
-              <strong>Smart Caching</strong> — Questions are served instantly from your pre-generated bank. Toggle "Force AI" to generate fresh questions on demand (uses API credits).
+          {/* Bank status banner */}
+          {bankLoaded && !bankError && bank.length > 0 && (
+            <div style={{ padding: "14px 18px", background: "var(--tealBg)", borderRadius: 10, border: "1px solid #c5e4dd", marginBottom: 24, display: "flex", gap: 12, alignItems: "flex-start" }}>
+              <span style={{ fontSize: 16 }}>✅</span>
+              <div style={{ fontFamily: "'Literata', serif", fontSize: 13.5, lineHeight: 1.6, color: "var(--teal)" }}>
+                <strong>Question bank loaded — {bank.length} questions ready.</strong> Papers are served instantly with no API cost. Toggle "Fresh AI" if you want brand new questions.
+              </div>
             </div>
-          </div>
+          )}
+
+          {bankLoaded && (bankError || bank.length === 0) && (
+            <div style={{ padding: "14px 18px", background: "#fdf5e6", borderRadius: 10, border: "1px solid #f0deb8", marginBottom: 24, display: "flex", gap: 12, alignItems: "flex-start" }}>
+              <span style={{ fontSize: 16 }}>⚠️</span>
+              <div style={{ fontFamily: "'Literata', serif", fontSize: 13.5, lineHeight: 1.6, color: "#c6922a" }}>
+                <strong>No question bank found.</strong> Put <code style={{ background: "#fff", padding: "1px 6px", borderRadius: 3, fontSize: 12 }}>question-bank.json</code> in your <code style={{ background: "#fff", padding: "1px 6px", borderRadius: 3, fontSize: 12 }}>public/</code> folder (run <code style={{ background: "#fff", padding: "1px 6px", borderRadius: 3, fontSize: 12 }}>generate-bank.mjs</code> to create it), or use "Fresh AI" mode which requires the Vercel API proxy.
+              </div>
+            </div>
+          )}
 
           {/* Topics */}
           <div style={{ marginBottom: 32 }}>
@@ -277,7 +419,7 @@ export default function App() {
           <div style={{ marginBottom: 32 }}>
             <div style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: 11, letterSpacing: 2, color: "var(--teal)", fontWeight: 700, marginBottom: 3 }}>03</div>
             <div style={{ fontFamily: "'Fraunces', serif", fontSize: 19, fontWeight: 800, marginBottom: 12 }}>Questions</div>
-            <div style={{ display: "flex", gap: 10 }}>
+            <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
               {COUNTS.map(n => (
                 <button key={n} onClick={() => setCount(n)}
                   style={{ width: 52, height: 52, borderRadius: 10, border: count === n ? "2px solid var(--teal)" : "2px solid var(--rule)", background: count === n ? "var(--tealBg)" : "var(--card)", color: count === n ? "var(--teal)" : "var(--ink)", fontFamily: "'JetBrains Mono', monospace", fontSize: 18, fontWeight: 700, cursor: "pointer", transition: "all 0.2s" }}>
@@ -285,45 +427,61 @@ export default function App() {
                 </button>
               ))}
             </div>
+            {!forceAI && selTopics.size > 0 && selDiffs.size > 0 && (
+              <div style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: 12, color: matchingInBank >= count ? "var(--teal)" : "var(--red)", marginTop: 10 }}>
+                {matchingInBank >= count
+                  ? `✓ ${matchingInBank} matching questions in bank — enough for ${count}`
+                  : matchingInBank > 0
+                    ? `⚠ Only ${matchingInBank} matching questions in bank (you asked for ${count}) — will serve ${matchingInBank}`
+                    : `✗ No matching questions in bank for this selection`}
+              </div>
+            )}
           </div>
 
           {/* Source toggle */}
           <div style={{ marginBottom: 28 }}>
             <div style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: 11, letterSpacing: 2, color: "var(--teal)", fontWeight: 700, marginBottom: 3 }}>04</div>
             <div style={{ fontFamily: "'Fraunces', serif", fontSize: 19, fontWeight: 800, marginBottom: 12 }}>Source</div>
-            <div style={{ display: "flex", gap: 10 }}>
-              {[
-                { val: false, label: "Question Bank", desc: "Instant · Free", icon: "📦" },
-                { val: true, label: "Fresh AI Generation", desc: "~20s · Uses credits", icon: "🤖" },
-              ].map(opt => (
-                <button key={String(opt.val)} onClick={() => setForceAI(opt.val)}
-                  style={{ flex: 1, padding: "14px 18px", borderRadius: 10, border: forceAI === opt.val ? "2px solid var(--teal)" : "2px solid var(--rule)", background: forceAI === opt.val ? "var(--tealBg)" : "var(--card)", cursor: "pointer", textAlign: "left", transition: "all 0.2s" }}>
-                  <div style={{ fontFamily: "'Literata', serif", fontSize: 14, fontWeight: 600, color: forceAI === opt.val ? "var(--teal)" : "var(--ink)" }}>{opt.icon} {opt.label}</div>
-                  <div style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: 11, color: "var(--ghost)", marginTop: 2 }}>{opt.desc}</div>
-                </button>
-              ))}
+            <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
+              <button onClick={() => setForceAI(false)}
+                style={{ flex: "1 1 200px", padding: "14px 18px", borderRadius: 10, border: !forceAI ? "2px solid var(--teal)" : "2px solid var(--rule)", background: !forceAI ? "var(--tealBg)" : "var(--card)", cursor: "pointer", textAlign: "left", transition: "all 0.2s", opacity: bank.length === 0 ? 0.5 : 1 }}>
+                <div style={{ fontFamily: "'Literata', serif", fontSize: 14, fontWeight: 600, color: !forceAI ? "var(--teal)" : "var(--ink)" }}>📦 Question Bank</div>
+                <div style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: 11, color: "var(--ghost)", marginTop: 2 }}>Instant · Free · No server needed</div>
+              </button>
+              <button onClick={() => setForceAI(true)}
+                style={{ flex: "1 1 200px", padding: "14px 18px", borderRadius: 10, border: forceAI ? "2px solid var(--teal)" : "2px solid var(--rule)", background: forceAI ? "var(--tealBg)" : "var(--card)", cursor: "pointer", textAlign: "left", transition: "all 0.2s" }}>
+                <div style={{ fontFamily: "'Literata', serif", fontSize: 14, fontWeight: 600, color: forceAI ? "var(--teal)" : "var(--ink)" }}>🤖 Fresh AI Generation</div>
+                <div style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: 11, color: "var(--ghost)", marginTop: 2 }}>~20s · Needs Vercel deploy + API key</div>
+              </button>
             </div>
           </div>
 
           {/* Error */}
           {error && (
-            <div style={{ padding: "14px 18px", background: "#fdf0ee", borderRadius: 8, border: "1px solid #f0c4c0", fontFamily: "'Literata', serif", fontSize: 14, color: "var(--red)", marginBottom: 18 }}>
+            <div style={{ padding: "14px 18px", background: "#fdf0ee", borderRadius: 8, border: "1px solid #f0c4c0", fontFamily: "'Literata', serif", fontSize: 14, color: "var(--red)", marginBottom: 18, lineHeight: 1.6 }}>
               ⚠ {error}
             </div>
           )}
 
           {/* Generate */}
-          <button onClick={generate} disabled={selTopics.size === 0 || selDiffs.size === 0}
+          <button onClick={generate}
+            disabled={selTopics.size === 0 || selDiffs.size === 0 || (!forceAI && bank.length === 0)}
             style={{
               width: "100%", padding: "18px", borderRadius: 12, border: "none",
-              background: (selTopics.size === 0 || selDiffs.size === 0) ? "var(--rule)" : "linear-gradient(135deg, #1b1b2f, #1a7a6d)",
+              background: (selTopics.size === 0 || selDiffs.size === 0 || (!forceAI && bank.length === 0))
+                ? "var(--rule)" : "linear-gradient(135deg, #1b1b2f, #1a7a6d)",
               color: "#fff", fontFamily: "'Fraunces', serif", fontSize: 18, fontWeight: 800,
-              cursor: (selTopics.size === 0 || selDiffs.size === 0) ? "not-allowed" : "pointer",
-              boxShadow: selTopics.size > 0 ? "0 6px 28px rgba(26,122,109,0.3)" : "none",
+              cursor: (selTopics.size === 0 || selDiffs.size === 0 || (!forceAI && bank.length === 0)) ? "not-allowed" : "pointer",
+              boxShadow: (selTopics.size > 0 && selDiffs.size > 0) ? "0 6px 28px rgba(26,122,109,0.3)" : "none",
               transition: "all 0.3s",
             }}>
-            {forceAI ? "Generate Fresh Paper" : "Build Paper from Bank"}
+            {forceAI ? "Generate Fresh Paper with AI" : "Build Paper from Bank"}
           </button>
+          {!forceAI && bank.length > 0 && (
+            <div style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: 11, color: "var(--ghost)", textAlign: "center", marginTop: 8 }}>
+              Instant · No API calls · Completely free
+            </div>
+          )}
         </div>
       )}
 
@@ -334,14 +492,14 @@ export default function App() {
       {page === "exam" && !loading && (
         <div style={{ maxWidth: 800, margin: "0 auto", padding: "28px 20px" }}>
 
-          {/* Source badge */}
           {source && (
             <div style={{
               display: "inline-flex", alignItems: "center", gap: 8,
               padding: "6px 14px", borderRadius: 6, marginBottom: 16,
               background: source === "bank" ? "var(--tealBg)" : "#fdf5e6",
               border: source === "bank" ? "1px solid #c5e4dd" : "1px solid #f0deb8",
-              fontFamily: "'JetBrains Mono', monospace", fontSize: 11, color: source === "bank" ? "var(--teal)" : "#c6922a",
+              fontFamily: "'JetBrains Mono', monospace", fontSize: 11,
+              color: source === "bank" ? "var(--teal)" : "#c6922a",
             }}>
               {source === "bank" ? "📦 Served from bank — no API credits used" : "🤖 Freshly generated by AI"}
             </div>
@@ -351,17 +509,16 @@ export default function App() {
           <div style={{ textAlign: "center", padding: "28px 24px", background: "var(--card)", borderRadius: 14, border: "1px solid var(--rule)", marginBottom: 24, boxShadow: "0 2px 8px rgba(0,0,0,0.04)" }}>
             <div style={{ fontFamily: "'Fraunces', serif", fontSize: 22, fontWeight: 900, marginBottom: 4 }}>A-Level Mathematics</div>
             <div style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: 12, color: "var(--ghost)", letterSpacing: 1.5, marginBottom: 16 }}>PRACTICE EXAMINATION PAPER</div>
-            <div style={{ display: "flex", justifyContent: "center", gap: 24, fontFamily: "'JetBrains Mono', monospace", fontSize: 13 }}>
+            <div style={{ display: "flex", justifyContent: "center", gap: 24, fontFamily: "'JetBrains Mono', monospace", fontSize: 13, flexWrap: "wrap" }}>
               <span><strong>{questions.length}</strong> Questions</span>
               <span><strong>{totalM}</strong> Marks</span>
               <span><strong>{Math.round(totalM * 1.2)}</strong> Min</span>
             </div>
             <div style={{ marginTop: 16, padding: "10px 14px", background: "var(--paper)", borderRadius: 8, fontFamily: "'Literata', serif", fontSize: 13.5, color: "var(--ghost)", lineHeight: 1.5 }}>
-              Answer <strong>all</strong> questions. Show working. Click "Reveal Mark Schemes" when done.
+              Answer <strong>all</strong> questions. Show working clearly. Click "Reveal Mark Schemes" when done.
             </div>
           </div>
 
-          {/* Questions */}
           {questions.map((q, i) => (
             <QuestionCard key={q.id || i} q={q} index={i} showMS={showMS}
               selfMark={marks[q.id || i]}
